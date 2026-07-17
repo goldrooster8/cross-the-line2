@@ -42,11 +42,11 @@
         .tick-minor { height: 10px; background: #cbd5e0; width: 2px; }
         .phrase-panel {
             display: flex; background: #fff; border-radius: 0 0 8px 8px; margin-top: 2px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 56px; overflow: hidden;  /* increased height */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 56px; overflow: hidden;
         }
         .phrase-column {
             flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
-            font-size: 0.7rem;  /* bigger text – almost 1.5× previous */
+            font-size: 0.7rem;  /* bigger text */
             font-weight: 700; color: #1a1e2b; line-height: 1.2; padding: 2px;
             word-break: break-word; overflow-wrap: break-word; hyphens: auto;
         }
@@ -346,8 +346,15 @@
         element.addEventListener('touchstart', start, { passive: false });
     }
 
+    // ===== FIXED LANE LAYOUT =====
     function getLaneLayout(totalGuessers) {
-        if (totalGuessers <= 1) return { rulerHeight: 70, laneHeight: 0, lanePadding: 0 };
+        if (totalGuessers <= 1) {
+            // Single guesser: one lane fits inside 70px ruler
+            const rulerHeight = 70;
+            const lanePadding = 10;
+            const laneHeight = rulerHeight - lanePadding * 2; // 50
+            return { rulerHeight, laneHeight, lanePadding };
+        }
         const rulerHeight = totalGuessers <= 3 ? 200 : 260;
         const lanePadding = 10;
         const laneHeight = (rulerHeight - lanePadding * 2) / totalGuessers;
@@ -484,7 +491,7 @@
             return;
         }
 
-        // ---- PICK PHASE (no card required) ----
+        // ---- PICK PHASE (no card required yet) ----
         if (phase === 'pick') {
             const answererUid = playerOrder[currentState.currentAnswererIndex];
             if (!answererUid || !players[answererUid]) {
