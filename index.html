@@ -11,13 +11,13 @@
             min-height: 100vh; margin: 0; padding: 10px;
         }
         .game-container {
-            width: 100%; max-width: 800px; background: #252a3a; border-radius: 24px; padding: 15px 12px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            width: 100%; max-width: 800px; background: #252a3a; border-radius: 24px; padding: 15px 12px 5px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5); display: flex; flex-direction: column;
         }
         @media (orientation: landscape) {
-            .game-container { max-width: 95%; padding: 12px 20px; }
-            .phrase-panel { height: 62px; }
-            .phrase-column { font-size: 0.75rem; }
+            .game-container { max-width: 95%; padding: 12px 20px 5px; }
+            .phrase-panel { height: 80px; }
+            .phrase-column { font-size: 0.95rem; }
             .ruler-container { max-height: 300px; }
         }
         .scoreboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 8px; background: #1e2230; padding: 6px; border-radius: 16px; }
@@ -42,11 +42,11 @@
         .tick-minor { height: 10px; background: #cbd5e0; width: 2px; }
         .phrase-panel {
             display: flex; background: #fff; border-radius: 0 0 8px 8px; margin-top: 2px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 56px; overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 70px; overflow: hidden;  /* taller */
         }
         .phrase-column {
             flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
-            font-size: 0.7rem;  /* bigger text */
+            font-size: 0.85rem;  /* bigger text */
             font-weight: 700; color: #1a1e2b; line-height: 1.2; padding: 2px;
             word-break: break-word; overflow-wrap: break-word; hyphens: auto;
         }
@@ -83,40 +83,35 @@
         .room-code {
             font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; background: #f7d44a; color: #1a1e2b; padding: 2px 8px; border-radius: 8px;
         }
-        .rules-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center;
+        /* Permanent rules footer */
+        .rules-footer {
+            background: #1e2230; border-radius: 12px; margin-top: 8px; padding: 8px; font-size: 0.7rem;
+            color: #cbd5e0; max-height: 80px; overflow-y: auto; transition: max-height 0.3s ease;
         }
-        .rules-content {
-            background: #252a3a; border-radius: 16px; padding: 20px; max-width: 500px; width: 90%;
-            color: #f0e6d2; max-height: 80vh; overflow-y: auto;
+        .rules-footer.expanded { max-height: 300px; }
+        .rules-footer-btn {
+            background: transparent; border: 1px solid #f7d44a; color: #f7d44a; padding: 2px 12px;
+            border-radius: 12px; cursor: pointer; font-size: 0.65rem; margin-bottom: 4px;
         }
-        .rules-content h3 { color: #f7d44a; }
-        .rules-content p, .rules-content li { font-size: 0.9rem; line-height: 1.4; margin: 4px 0; }
-        .close-btn {
-            display: block; margin: 10px auto 0; background: #f7d44a; color: #1a1e2b; border: none;
-            padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: bold;
-        }
+        .rules-footer ul { margin: 4px 0; padding-left: 20px; }
+        .rules-footer li { margin-bottom: 2px; }
     </style>
 </head>
 <body>
 <div class="game-container" id="gameContainer">
     <div id="dynamicContent"></div>
-</div>
-
-<!-- Rules Modal -->
-<div id="rulesModal" class="rules-modal">
-    <div class="rules-content">
-        <h3>📜 How to Play Cross the Line</h3>
-        <p><strong>Objective:</strong> Score the most points by guessing the secret position chosen by the current answerer.</p>
-        <ul>
-            <li>One player is the <strong>answerer</strong> each round. They secretly choose a spot on the ruler (1–5) that represents their answer to the prompt.</li>
-            <li>All other players then <strong>guess</strong> where that spot is by placing a bar (short, medium, or long) on the ruler. Shorter bars give more points but are harder to hit.</li>
-            <li>After everyone has guessed, the true answer line is revealed. If the answer line lies <strong>inside</strong> your bar, you win the points for that bar type (1pt for long, 2pt for medium, 3pt for short).</li>
-            <li>First player to reach 12 points wins!</li>
-        </ul>
-        <p><strong>How to join:</strong> One person creates a room and shares the 5‑letter code. Others enter the code and a name to join. The host starts the game.</p>
-        <button class="close-btn" onclick="document.getElementById('rulesModal').style.display='none'">Got it!</button>
+    <!-- Permanent rules footer -->
+    <div class="rules-footer" id="rulesFooter">
+        <button class="rules-footer-btn" onclick="toggleRules()">📜 Rules</button>
+        <div id="rulesText">
+            <strong>How to play:</strong>
+            <ul>
+                <li>Each round one player (the answerer) secretly chooses a spot (1–5) on the ruler.</li>
+                <li>Other players guess that spot by placing a bar (short/medium/long). Shorter = more points but harder.</li>
+                <li>After all guesses, the true line is revealed. If the line falls inside your bar, you score (long=1, medium=2, short=3).</li>
+                <li>Game ends after 10 rounds. Highest total wins!</li>
+            </ul>
+        </div>
     </div>
 </div>
 
@@ -125,6 +120,12 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <script>
+    // Toggle rules expansion
+    window.toggleRules = function() {
+        const footer = document.getElementById('rulesFooter');
+        footer.classList.toggle('expanded');
+    };
+
     // ===== FIREBASE CONFIG =====
     const firebaseConfig = {
         apiKey: "AIzaSyCLknDatwO7p3yEhJCmg9kK4BAIP7P-Kms",
@@ -346,13 +347,11 @@
         element.addEventListener('touchstart', start, { passive: false });
     }
 
-    // ===== FIXED LANE LAYOUT =====
     function getLaneLayout(totalGuessers) {
         if (totalGuessers <= 1) {
-            // Single guesser: one lane fits inside 70px ruler
             const rulerHeight = 70;
             const lanePadding = 10;
-            const laneHeight = rulerHeight - lanePadding * 2; // 50
+            const laneHeight = rulerHeight - lanePadding * 2;
             return { rulerHeight, laneHeight, lanePadding };
         }
         const rulerHeight = totalGuessers <= 3 ? 200 : 260;
@@ -383,7 +382,6 @@
                     <input type="text" id="playerNameInput" placeholder="Your name" maxlength="12" style="padding:5px; font-size:1rem;">
                     <button id="submitNameBtn">Join</button>
                 </div>
-                <button id="howToPlayBtn" style="margin-top:15px; background:transparent; border:1px solid #f7d44a; color:#f7d44a;">How to Play</button>
             </div>
         `;
 
@@ -422,10 +420,6 @@
                     enterName();
                 }
             });
-        });
-
-        document.getElementById('howToPlayBtn').addEventListener('click', () => {
-            document.getElementById('rulesModal').style.display = 'flex';
         });
     }
 
@@ -491,7 +485,7 @@
             return;
         }
 
-        // ---- PICK PHASE (no card required yet) ----
+        // ---- PICK PHASE ----
         if (phase === 'pick') {
             const answererUid = playerOrder[currentState.currentAnswererIndex];
             if (!answererUid || !players[answererUid]) {
@@ -530,9 +524,9 @@
             return;
         }
 
-        // ---- Show who the answerer is before guessing ----
         const answererUid = playerOrder[currentState.currentAnswererIndex];
         const answererName = players[answererUid] ? players[answererUid].name : 'Unknown';
+        const roundNum = currentState.roundCount || 0;
 
         if (phase === 'answer') {
             if (answererUid === myUid) {
@@ -573,7 +567,7 @@
         }
 
         if (phase === 'guess') {
-            html += `<p style="text-align:center; font-size:0.9rem; color:#f7d44a;">Answerer: ${answererName}</p>`;
+            html += `<p style="text-align:center; font-size:0.9rem; color:#f7d44a;">Answerer: ${answererName} | Round ${roundNum+1}/10</p>`;
 
             const guessQueue = currentState.guessQueue;
             const step = currentState.currentGuesserStep;
@@ -717,18 +711,36 @@
                 <div style="margin-top:15px;">
             `;
             let roundResults = '';
+            const scoreUpdates = {};
             guessQueue.forEach(uid => {
                 const g = guesses[uid];
                 if (!g) return;
                 const hit = isHit(currentState.secretLine, g.rangeStart, g.rangeEnd);
                 const pts = hit ? BAR_POINTS[g.barType] : 0;
-                roundResults += `<div class="result-line"><strong>${players[uid].name}</strong> (${g.barType}): ${hit ? `✅ Hit! +${pts} pt` : '❌ Missed'}</div>`;
+                const oldScore = players[uid] ? players[uid].score : 0;
+                const newScore = oldScore + pts;
+                scoreUpdates[`players/${uid}/score`] = newScore;
+                roundResults += `<div class="result-line"><strong>${players[uid].name}</strong> (${g.barType}): ${hit ? `✅ Hit! +${pts} pt` : '❌ Missed'} (Total: ${newScore})</div>`;
             });
+            // Update all scores and increment round
+            const newRound = (currentState.roundCount || 0) + 1;
+            scoreUpdates['roundCount'] = newRound;
+            roomRef.update(scoreUpdates);
             html += roundResults + `</div></div>`;
 
-            const winners = playerOrder.filter(uid => (players[uid].score || 0) >= 12);
-            if (winners.length > 0) {
-                html += `<div class="winner-banner">🏆 Winner(s): ${winners.map(uid => players[uid].name).join(', ')} reached 12 points! 🏆</div>`;
+            // Check for game end
+            if (newRound >= 10) {
+                // Game over – determine winner
+                let maxScore = -1, winnerUids = [];
+                playerOrder.forEach(uid => {
+                    const s = scoreUpdates[`players/${uid}/score`] || players[uid].score;
+                    if (s > maxScore) { maxScore = s; winnerUids = [uid]; }
+                    else if (s === maxScore) { winnerUids.push(uid); }
+                });
+                html += `<div class="winner-banner">
+                    🏆 Game over after 10 rounds!<br>
+                    Winner(s): ${winnerUids.map(uid => players[uid].name).join(', ')} with ${maxScore} points! 🏆
+                </div>`;
                 if (myUid === currentState.host) html += `<button id="newGameBtn">Play Again</button>`;
             } else {
                 if (myUid === currentState.host) html += `<button id="nextRoundBtn">Next Round ▶</button>`;
@@ -757,7 +769,8 @@
             guessQueue: [],
             currentGuesserStep: 0,
             currentCard: null,
-            deck: deck
+            deck: deck,
+            roundCount: 0
         });
     }
 
