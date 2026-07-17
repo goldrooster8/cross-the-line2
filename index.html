@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Cross the Line – Online Edition</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: #1a1e2b; color: #f0e6d2; display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; margin: 0; padding: 10px;
+        }
+        .game-container {
+            width: 100%; max-width: 800px; background: #252a3a; border-radius: 24px; padding: 15px 12px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+        }
+        @media (orientation: landscape) {
+            .game-container { max-width: 95%; padding: 12px 20px; }
+            .phrase-panel { height: 52px; }
+            .phrase-column { font-size: 0.55rem; }
+            .ruler-container { max-height: 300px; }
+        }
+        .scoreboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 8px; background: #1e2230; padding: 6px; border-radius: 16px; }
+        .score-chip { background: #2f3547; border-radius: 20px; padding: 4px 10px; font-size: 0.8rem; color: #f0e6d2; font-weight: bold; }
+        .score-chip.active { border: 2px solid #f7d44a; background: #3a4055; }
+        .spectrum-area { background: #2f3547; border-radius: 20px; padding: 10px 10px 15px; margin: 8px 0; }
+        .prompt { font-size: 1.1rem; font-weight: 600; margin-bottom: 4px; color: #f7d44a; text-align: center; }
+        .pick-area { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
+        .pick-card {
+            background: #1e2230; border: 2px solid #4a5568; border-radius: 16px; padding: 15px 12px;
+            flex: 1 1 220px; cursor: pointer; text-align: center; font-weight: 600; color: #f7d44a; font-size: 0.9rem;
+        }
+        .pick-card:hover { border-color: #f7d44a; background: #2a2f3f; }
+        .ruler-wrapper { width: 100%; margin: 8px auto 0; }
+        .ruler-container {
+            position: relative; width: 100%; background: #1e2230; border-radius: 6px; border: 2px solid #4a5568;
+            user-select: none; touch-action: none; overflow: hidden;
+        }
+        .ruler-ticks { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        .tick-mark { position: absolute; bottom: 0; transform: translateX(-50%); }
+        .tick-major { height: 22px; background: #f7d44a; width: 3px; }
+        .tick-minor { height: 10px; background: #cbd5e0; width: 2px; }
+        .phrase-panel { display: flex; background: #fff; border-radius: 0 0 8px 8px; margin-top: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 46px; overflow: hidden; }
+        .phrase-column {
+            flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
+            font-size: 0.5rem; font-weight: 700; color: #1a1e2b; line-height: 1.15; padding: 2px;
+            word-break: break-word; overflow-wrap: break-word; hyphens: auto;
+        }
+        .answer-bar {
+            position: absolute; top: 5px; bottom: 5px; background: rgba(255,255,255,0.2);
+            border: 1px dashed rgba(255,255,255,0.5); border-radius: 6px; cursor: ew-resize; z-index: 20;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .answer-bar::after {
+            content: ''; position: absolute; top: 2px; bottom: 2px; width: 2px; background: #e53e3e; box-shadow: 0 0 6px #e53e3e;
+        }
+        .guess-bar {
+            position: absolute; border-radius: 6px; opacity: 0.85; cursor: grab; z-index: 15;
+            display: flex; align-items: center; justify-content: center; font-size: 0.55rem; font-weight: bold;
+            color: #1a1e2b; background: #63b3ed; border: 2px solid rgba(0,0,0,0.3); min-width: 20px;
+        }
+        .guess-bar:active { cursor: grabbing; }
+        .bar-type-selector { display: flex; gap: 6px; justify-content: center; margin: 10px 0 5px; flex-wrap: wrap; }
+        .bar-type-btn {
+            background: #4a5568; color: #f0e6d2; border: 2px solid transparent; padding: 5px 12px; border-radius: 20px;
+            cursor: pointer; font-weight: bold; font-size: 0.8rem;
+        }
+        .bar-type-btn.selected { background: #f7d44a; color: #1a1e2b; border-color: #f7d44a; }
+        button {
+            background: #f7d44a; border: none; color: #1a1e2b; font-weight: bold; padding: 8px 16px;
+            border-radius: 30px; cursor: pointer; font-size: 0.85rem;
+        }
+        button:hover { background: #e6bd2e; }
+        .message { text-align: center; font-size: 1rem; margin: 8px 0; font-weight: 500; }
+        .winner-banner {
+            background: #f7d44a; color: #1a1e2b; padding: 8px; border-radius: 16px; font-weight: bold; text-align: center; margin: 8px 0;
+        }
+        .result-line { margin: 4px 0; padding: 4px 8px; background: #2f3547; border-radius: 12px; font-size: 0.8rem; }
+        .room-code {
+            font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; background: #f7d44a; color: #1a1e2b; padding: 2px 8px; border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+<div class="game-container" id="gameContainer">
+    <div id="dynamicContent"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
+<script>
+    // ===== FIREBASE CONFIG =====
+    const firebaseConfig = {
+        apiKey: "AIzaSyCLknDatwO7p3yEhJCmg9kK4BAIP7P-Kms",
+        authDomain: "cross-the-line-13ebb.firebaseapp.com",
+        databaseURL: "https://cross-the-line-13ebb-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "cross-the-line-13ebb",
+        storageBucket: "cross-the-line-13ebb.firebasestorage.app",
+        messagingSenderId: "758882319569",
+        appId: "1:758882319569:web:fafbe43cea890d448519f0"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // ===== COMPLETE CARD DECK =====
+    const CARDS = [
+        // LIGHT (49)
+        { prompt: "How long is your daily screen time?", answers: ["Barely check my phone", "Under two hours total", "Around four to five hours", "Seven plus hours daily", "Phone glued to hand"] },
+        { prompt: "How often do you post photos?", answers: ["Ghost account, no posts", "Once a year maybe", "Monthly photo dump only", "Weekly stories and reels", "Influencer everything documented"] },
+        { prompt: "How do you handle group chats?", answers: ["Reply three weeks later", "Only thumbs-up emojis", "Chat when I have time", "Spam memes when quiet", "I run the entire chat"] },
+        { prompt: "How much do you use wireless earbuds?", answers: ["Never wear them alone", "Only on bus or workout", "One earbud during chores", "Always in my ears", "They are part of my skull"] },
+        { prompt: "When do you finish assignments?", answers: ["Handed in weeks early", "Done the weekend before", "Submit at 11:58 PM", "Ask for an extension", "Start in class that day"] },
+        { prompt: "What’s your school lunch situation?", answers: ["Gourmet homemade meal prep", "Boring sandwich and apple", "Canteen hot chips twice weekly", "Survive on iced coffee only", "UberEats to the side gate"] },
+        { prompt: "How do you wake up for school?", answers: ["Up before the alarm", "One alarm, immediately get up", "Hit snooze twice, rush", "Fifteen alarms, still late", "Wake up after first period"] },
+        { prompt: "What’s your group project role?", answers: ["I do all the work", "Finish my slides on time", "Make the slides look pretty", "Offer moral support only", "Skip presentation completely"] },
+        { prompt: "How clean is your bedroom?", answers: ["Minimalist showroom perfect", "Mostly clean, few papers", "Organised chaos on floor", "Mountain of clothes on chair", "Biohazard, old energy cans"] },
+        { prompt: "How do you care for your shoes?", answers: ["Wipe with toothbrush after walk", "Try to keep them clean", "Care for one week only", "Step in mud on purpose", "Soles peeling off for years"] },
+        { prompt: "How long can you binge-watch?", answers: ["One episode a day", "Two to three on Friday", "Whole season one weekend", "Start at midnight, finish sunrise", "Three seasons without moving"] },
+        { prompt: "How spicy do you like food?", answers: ["Mild butter chicken burns", "Handle sweet chili sauce", "Jalapeño level is fine", "Hot sauce on everything", "Drink Samyang noodle liquid"] },
+        { prompt: "What’s your concert energy?", answers: ["Sit in back with earplugs", "Stand calmly, record clips", "Sing the chorus lines", "Scream every lyric, cry", "Front row mosh pit diving"] },
+        { prompt: "How do you follow trends?", answers: ["I hate all trends", "Adopt after six months", "Try if friends are doing", "Buy viral TikTok items", "I create the trends"] },
+        { prompt: "How do you rage at games?", answers: ["'Good game everyone!'", "Sigh, queue next match", "Blame lag and controller", "Rage quit and slam desk", "Broken controller, hole in wall"] },
+        { prompt: "What’s your texting style?", answers: ["Perfect grammar, full stops", "Normal shorthand, emojis", "All lowercase, heavy slang", "Fifteen one-word messages", "Brainrot terms and voice notes"] },
+        { prompt: "How do you handle bugs?", answers: ["Pick them up bare hands", "Use cup and paper method", "Smack with a shoe", "Scream for someone else", "Burn the whole house down"] },
+        { prompt: "How long do resolutions last?", answers: ["Never make any resolutions", "Quit by January second", "Last about a month only", "Push until mid-year", "Completely change my life"] },
+        { prompt: "How do you behave when a friend drives?", answers: ["Silent, I trust them", "Quietly hold door handle", "Give helpful navigation tips", "Gasp at every red light", "Grab the wheel to help"] },
+        { prompt: "Where do you get clothes?", answers: ["Brand new from mall only", "Mostly new, some online", "Mix new and vintage finds", "Spend hours in op-shops", "Attic 1994 look only"] },
+        { prompt: "Do you make your bed?", answers: ["Perfectly tucked and ironed", "Pull blanket to look flat", "Only when guests come", "Never, just get back in", "Sheets twisted in a ball"] },
+        { prompt: "How long do you shower?", answers: ["Under three minutes max", "Five to ten minutes normally", "Fifteen minutes thinking deeply", "Thirty plus minutes sitting", "Until hot water runs out"] },
+        { prompt: "How do you squeeze toothpaste?", answers: ["Perfectly from the bottom", "Mostly neat, not obsessed", "Squeeze right in the middle", "Twisted mangled tube mess", "Cut open with scissors"] },
+        { prompt: "How do you organise your wardrobe?", answers: ["Colour-coded on matching hangers", "Neatly folded in drawers", "Shoved in, still in wardrobe", "Permanent clean laundry pile", "Sniff clothes from floor"] },
+        { prompt: "How do you pack a bag?", answers: ["Night before with backup snacks", "Morning, exactly what's scheduled", "Shove everything in five minutes", "Bag full of broken pens", "Grab whatever near front door"] },
+        { prompt: "What’s your dish washing routine?", answers: ["Wash plate the second finished", "Dishwasher within an hour", "Leave in sink until evening", "Wait until no clean forks", "Hide dirty bowls in room"] },
+        { prompt: "How do you eat pizza crust?", answers: ["Eat the crust first", "Eat everything including crust", "Only with dipping sauce", "Leave dry crust bones behind", "Eat cheese and toppings only"] },
+        { prompt: "What do you do with cereal milk?", answers: ["Drink every single drop", "Spoon out last sugary bits", "Pour some milk down sink", "Leave warm soggy milk bowl", "Tip whole bowl in bin"] },
+        { prompt: "How do you handle leftovers?", answers: ["Eat cold from the fridge", "Quick thirty-second microwave zap", "Reheat perfectly with stirring", "Oven or air fryer crispy", "Refuse leftovers entirely"] },
+        { prompt: "How do you grocery shop with parents?", answers: ["Stay home, refuse to go", "Sit in the car waiting", "Walk silently holding list", "Sneak random snacks into trolley", "Ride on back of trolley"] },
+        { prompt: "How do you give gifts?", answers: ["Handmade planned months ahead", "Thoughtful store-bought week before", "Standard gift card in card", "Transfer cash at the party", "My presence is the gift"] },
+        { prompt: "How do you doodle in class?", answers: ["Pristine margins, perfect notes", "A few little stars sometimes", "Intricate 3D cubes or letters", "Full anime characters instead", "Entire page dark scribble mess"] },
+        { prompt: "How much do you sing alone?", answers: ["Complete silence inside", "Quiet humming or whistling", "Normal singing along to songs", "Full concert, hairbrush mic", "Opera scream, neighbours call"] },
+        { prompt: "How neat is your handwriting?", answers: ["Typewriter font perfect lines", "Standard clean cursive print", "Messy but can still read", "Hieroglyphics even I can't read", "Chicken stepped in ink"] },
+        { prompt: "How do you approach puzzles?", answers: ["Give up in two seconds", "Try one or two ideas then stop", "Think casually for few minutes", "Refuse sleep until solved", "Write code to solve it"] },
+        { prompt: "How much do you procrastinate homework?", answers: ["Start early, ahead of schedule", "After a short break", "Evening before it's due", "Late night panic mode", "Never even start it"] },
+        { prompt: "How do you handle chewing sounds?", answers: ["Don't even notice them", "Mild annoyance maybe", "Bothers me a fair bit", "Must leave the room", "Absolute rage, cannot cope"] },
+        { prompt: "What’s your ideal weekend?", answers: ["Full adventure outside", "Mix of plans and chill", "Stay home, relax fully", "Total rest, barely move", "Do not leave my bed"] },
+        { prompt: "How fresh is your morning breath?", answers: ["Minty fresh and clean", "Okay, not noticeable", "Needs some gum quickly", "Smells like dragon fire", "Total biohazard zone"] },
+        { prompt: "How clean is your locker?", answers: ["Empty and spotless", "Books only, no mess", "Some snack wrappers inside", "Lost items buried deep", "Smells weird from outside"] },
+        { prompt: "Do you dance at parties?", answers: ["Never, stand by wall", "Lean against wall, nod", "Small moves in corner", "On the dance floor moving", "Centre of attention dancing"] },
+        { prompt: "How do you react to spoilers?", answers: ["Don't care at all", "Mildly upset, okay", "Annoyed, wish I didn't know", "Very angry, ruin mood", "End the friendship immediately"] },
+        { prompt: "How do you deal with pet hair?", answers: ["Always lint roll perfectly", "Try to remove most", "Accept some fur on clothes", "Don't care, covered in fur", "I am basically the pet"] },
+        { prompt: "How well can you parallel park?", answers: ["Expert, one smooth move", "Okay, need a try or two", "Struggle, take many attempts", "Avoid parallel parking always", "Cannot drive at all"] },
+        { prompt: "How often do you drop your phone?", answers: ["Never, super careful", "Rarely, maybe once a year", "Sometimes, a few times monthly", "Often, screen is cracked", "Completely shattered beyond use"] },
+        { prompt: "How competitive are you in casual games?", answers: ["Just a game, I laugh", "Play to win, fine losing", "Annoyed if rules not followed", "Trash talk and point tracking", "Flip board, yell, stop speaking"] },
+        { prompt: "What’s your walking speed?", answers: ["Slow meandering, look at leaves", "Relaxed pace with friends", "Standard commuter moving purpose", "Power walking weaving people", "Running everywhere like escaping"] },
+        { prompt: "How fit are you for running?", answers: ["Out of breath on stairs", "Can handle light jog", "Average, cross-country okay", "Athletic, train regularly", "Half-marathon for fun"] },
+        { prompt: "How much sunscreen do you use?", answers: ["Never, accept the sunburn", "Tiny bit if reminded", "Quick spray on arms and legs", "Full factor fifty reapplied", "Zinc, hat, long sleeves, fear sun"] },
+        // PERSONAL (21)
+        { prompt: "How often do you feel left out?", answers: ["Never, always included", "Rarely, only occasionally", "Sometimes, depends on group", "Often, I notice it", "Always feel left out"] },
+        { prompt: "How much do you compare yourself to others?", answers: ["Never compare myself", "Rarely, happy with me", "Sometimes it creeps in", "Often, it bothers me", "Constantly comparing, it hurts"] },
+        { prompt: "How quickly do you trust new people?", answers: ["Trust instantly, open book", "Trust after a few talks", "Take months to trust", "Very guarded, rare trust", "Never fully trust anyone"] },
+        { prompt: "How do you handle feeling sad?", answers: ["Share with friends right away", "Tell one close person", "Keep it to myself mostly", "Hide it completely", "Pretend I'm fine always"] },
+        { prompt: "How much do you overthink texts?", answers: ["Never overthink, send", "Rarely, just respond", "Sometimes worry about tone", "Often analyze for hours", "Overthink every single message"] },
+        { prompt: "How do you react when a friend is upset?", answers: ["Drop everything to help", "Try to cheer them up", "Give space, check later", "Feel awkward, unsure what to do", "Avoid, don't know how to help"] },
+        { prompt: "How often do you pretend to be okay?", answers: ["Never, I am always genuine", "Rarely, only with strangers", "Sometimes to avoid drama", "Often, put on a brave face", "Always, nobody knows real me"] },
+        { prompt: "How easily do you forgive someone?", answers: ["Forgive instantly, move on", "After a sincere apology", "Take time, hold a small grudge", "Hold grudge for weeks", "Never forgive, cut them off"] },
+        { prompt: "How much do you care what others think?", answers: ["Zero, I am myself", "A little, sometimes consider", "Moderately, it matters sometimes", "A lot, want to fit in", "Obsessed, I change for others"] },
+        { prompt: "How open are you about your feelings?", answers: ["I share everything openly", "Share with close friends", "Only if asked directly", "Keep most feelings inside", "Never share, total vault"] },
+        { prompt: "How do you handle conflict with friends?", answers: ["Talk it out calmly", "Address it but nervous", "Avoid and hope it fades", "Get defensive, argue", "Ghost them until it blows over"] },
+        { prompt: "How much do you rely on friends for support?", answers: ["Always lean on them", "Often, they help a lot", "Sometimes when it's tough", "Rarely, I handle alone", "Never, I deal solo"] },
+        { prompt: "How do you feel about being alone?", answers: ["Love alone time, thrive", "Enjoy a balance", "Fine for a while", "Get lonely quickly", "Hate being alone, panic"] },
+        { prompt: "How often do you judge yourself harshly?", answers: ["Never, I'm kind to myself", "Rarely, only big mistakes", "Sometimes, over small things", "Often, my own worst critic", "Constantly, never good enough"] },
+        { prompt: "How much do you hide your true self around others?", answers: ["I am exactly who I am", "Mostly me, small tweaks", "Sometimes adapt to fit in", "Often wear a mask", "Completely different person"] },
+        { prompt: "How do you feel about making mistakes?", answers: ["Learn and move on easily", "Feel a bit embarrassed", "Dwell on it for a day", "Ruminate for weeks", "I can't let go, it haunts me"] },
+        { prompt: "How often do you feel truly understood?", answers: ["Always, people get me", "Often, mostly understood", "Sometimes, not fully", "Rarely, few understand", "Never, I feel alone"] },
+        { prompt: "How do you react to compliments from friends?", answers: ["Accept and feel good", "Smile but deflect", "Feel awkward, brush off", "Doubt they mean it", "Reject and argue"] },
+        { prompt: "How much do you trust people with secrets?", answers: ["Trust easily, open", "Trust close friends only", "Trust after a long time", "Very rarely trust anyone", "I never share secrets"] },
+        { prompt: "How do you feel when a friend cancels plans?", answers: ["Totally fine, more me-time", "A bit disappointed but okay", "Feel sad, wonder why", "Take it personally, hurt", "Furious, they don't care"] },
+        { prompt: "How often do you feel like you don't fit in?", answers: ["Never, always belong", "Rarely, mostly comfortable", "Sometimes in new groups", "Often feel like outsider", "Always feel I don't fit"] },
+        // INTERPERSONAL (8)
+        { prompt: "How similar is your music taste to {player}?", answers: ["Totally different", "A few overlaps", "Half the same", "Mostly the same", "Exactly identical"] },
+        { prompt: "How often do you and {player} laugh at the same things?", answers: ["Never", "Rarely", "Sometimes", "Often", "Always"] },
+        { prompt: "How well do you understand {player}'s sense of humor?", answers: ["Not at all", "A little", "Moderately", "Pretty well", "Completely"] },
+        { prompt: "How much do you trust {player} with a secret?", answers: ["Would never tell", "Only small stuff", "Some secrets", "Most secrets", "Trust completely"] },
+        { prompt: "How similar are your study habits to {player}?", answers: ["Opposite", "A bit different", "About the same", "Very similar", "Identical"] },
+        { prompt: "How often do you and {player} agree on what to eat?", answers: ["Never", "Rarely", "Sometimes", "Often", "Always"] },
+        { prompt: "How comfortable are you being yourself around {player}?", answers: ["Not at all", "A little", "Moderately", "Mostly", "Completely"] },
+        { prompt: "How similar is your energy level to {player}?", answers: ["Opposite", "A bit different", "About the same", "Very similar", "Identical"] }
+    ];
+
+    const MIN_VAL = 1.0, MAX_VAL = 5.0;
+    const BAR_HALF = { long: 0.75, medium: 0.35, short: 0.2 };
+    const BAR_POINTS = { long: 1, medium: 2, short: 3 };
+    function valueToPercent(v) { return 5 + (v - MIN_VAL) * 22.5; }
+    function percentToValue(pct) { return MIN_VAL + (pct - 5) / 22.5; }
+    function computeBarRange(center, type) { const half = BAR_HALF[type]; return { start: center - half, end: center + half }; }
+    function isHit(secret, barStart, barEnd) { return secret >= barStart && secret <= barEnd; }
+
+    // ===== FIREBASE ARRAY NORMALIZATION =====
+    function normalizeArrays(obj) {
+        if (Array.isArray(obj)) return obj;
+        if (obj && typeof obj === 'object') {
+            const keys = Object.keys(obj);
+            if (keys.length > 0 && keys.every(k => String(Number(k)) === k && Number(k) >= 0 && Number.isInteger(Number(k)))) {
+                const arr = [];
+                keys.sort((a,b) => Number(a) - Number(b)).forEach(k => { arr.push(normalizeArrays(obj[k])); });
+                return arr;
+            }
+            for (const key in obj) {
+                obj[key] = normalizeArrays(obj[key]);
+            }
+        }
+        return obj;
+    }
+
+    // ===== GLOBAL STATE =====
+    let myUid = null, roomId = null, roomRef = null, currentState = null, playerOrder = [], myIndex = -1;
+    const container = document.getElementById('dynamicContent');
+
+    auth.signInAnonymously().then(() => {
+        myUid = auth.currentUser.uid;
+        renderSetup();
+    }).catch(error => {
+        container.innerHTML = `<p style="text-align:center;">Authentication error: ${error.message}</p>`;
+    });
+
+    // ===== RENDERING HELPERS =====
+    function buildRulerHTML(extraInner = '', guessLanes = null, rulerHeight = 70) {
+        let ticksHTML = '';
+        for (let v = 1; v <= 5; v++) {
+            const left = valueToPercent(v);
+            ticksHTML += `<div class="tick-mark tick-major" style="left:${left}%;"></div>`;
+        }
+        for (let major = 1; major < 5; major++) {
+            for (let i = 1; i <= 5; i++) {
+                const minor = major + i / 6;
+                const left = valueToPercent(minor);
+                ticksHTML += `<div class="tick-mark tick-minor" style="left:${left}%;"></div>`;
+            }
+        }
+        ticksHTML += `<div class="tick-mark tick-minor" style="left:0%;"></div>`;
+        ticksHTML += `<div class="tick-mark tick-minor" style="left:2.5%;"></div>`;
+        ticksHTML += `<div class="tick-mark tick-minor" style="left:97.5%;"></div>`;
+        ticksHTML += `<div class="tick-mark tick-minor" style="left:100%;"></div>`;
+
+        let phraseColumns = '';
+        if (currentState && currentState.currentCard && Array.isArray(currentState.currentCard.answers)) {
+            currentState.currentCard.answers.forEach((answer) => {
+                phraseColumns += `<div class="phrase-column">${answer}</div>`;
+            });
+        }
+
+        return `
+            <div class="ruler-wrapper">
+                <div class="ruler-container" id="ruler" style="height:${rulerHeight}px;">
+                    <div class="ruler-ticks">${ticksHTML}</div>
+                    ${extraInner}
+                    ${guessLanes ? guessLanes : ''}
+                </div>
+                <div class="phrase-panel">${phraseColumns}</div>
+            </div>
+        `;
+    }
+
+    function makeDraggable(element, onDrag, minLeftPercent = null, maxLeftPercent = null) {
+        let startX = 0, initialLeftPercent = 0, dragging = false;
+        const ruler = document.getElementById('ruler');
+        if (!ruler) return;
+
+        function start(e) {
+            e.preventDefault();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const rect = ruler.getBoundingClientRect();
+            startX = clientX;
+            initialLeftPercent = parseFloat(element.style.left) || 0;
+            dragging = true;
+            element.setPointerCapture(e.pointerId || 1);
+            window.addEventListener('mousemove', move);
+            window.addEventListener('mouseup', stop);
+            window.addEventListener('touchmove', move, { passive: false });
+            window.addEventListener('touchend', stop);
+        }
+
+        function move(e) {
+            if (!dragging) return;
+            e.preventDefault();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const dx = clientX - startX;
+            const rulerRect = ruler.getBoundingClientRect();
+            const rulerWidth = rulerRect.width;
+            const dxPercent = (dx / rulerWidth) * 100;
+            let newLeftPercent = initialLeftPercent + dxPercent;
+            const elemWidth = parseFloat(element.style.width) || 0;
+            const maxLeft = maxLeftPercent !== null ? maxLeftPercent : 100 - elemWidth;
+            const minLeft = minLeftPercent !== null ? minLeftPercent : 0;
+            newLeftPercent = Math.max(minLeft, Math.min(newLeftPercent, maxLeft));
+            element.style.left = newLeftPercent + '%';
+            if (onDrag) onDrag(newLeftPercent);
+        }
+
+        function stop() {
+            dragging = false;
+            window.removeEventListener('mousemove', move);
+            window.removeEventListener('mouseup', stop);
+            window.removeEventListener('touchmove', move);
+            window.removeEventListener('touchend', stop);
+        }
+
+        element.addEventListener('mousedown', start);
+        element.addEventListener('touchstart', start, { passive: false });
+    }
+
+    function getLaneLayout(totalGuessers) {
+        if (totalGuessers <= 1) return { rulerHeight: 70, laneHeight: 0, lanePadding: 0 };
+        const rulerHeight = totalGuessers <= 3 ? 200 : 260;
+        const lanePadding = 10;
+        const laneHeight = (rulerHeight - lanePadding * 2) / totalGuessers;
+        return { rulerHeight, laneHeight, lanePadding };
+    }
+
+    function generateRoomCode() {
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        let code = '';
+        for (let i = 0; i < 5; i++) code += letters.charAt(Math.floor(Math.random() * letters.length));
+        return code;
+    }
+
+    // ===== SETUP =====
+    function renderSetup() {
+        container.innerHTML = `
+            <div style="text-align:center;">
+                <h2>🎯 Cross the Line</h2>
+                <div id="setupArea">
+                    <button id="createRoomBtn">Create New Room</button>
+                    <p style="margin:10px 0;">or</p>
+                    <input type="text" id="roomCodeInput" placeholder="Enter room code" style="padding:5px; font-size:1rem; width:120px; text-align:center;">
+                    <button id="joinRoomBtn">Join Room</button>
+                </div>
+                <div id="nameEntry" style="display:none; margin-top:10px;">
+                    <input type="text" id="playerNameInput" placeholder="Your name" maxlength="12" style="padding:5px; font-size:1rem;">
+                    <button id="submitNameBtn">Join</button>
+                </div>
+            </div>
+        `;
+
+        document.getElementById('createRoomBtn').addEventListener('click', () => {
+            const roomCode = generateRoomCode();
+            const shuffledDeck = [...CARDS].sort(() => Math.random() - 0.5);
+            roomRef = db.ref(`rooms/${roomCode}`);
+            roomId = roomCode;
+            roomRef.set({
+                phase: 'lobby',
+                host: myUid,
+                players: {},
+                currentAnswererIndex: 0,
+                currentCard: null,
+                secretLine: null,
+                guesses: {},
+                guessQueue: [],
+                currentGuesserStep: 0,
+                showAllGuesses: true,
+                deck: shuffledDeck,
+                roundCount: 0,
+                roomCode: roomCode
+            }).then(() => enterName());
+        });
+
+        document.getElementById('joinRoomBtn').addEventListener('click', () => {
+            const code = document.getElementById('roomCodeInput').value.trim().toUpperCase();
+            if (!code) return alert("Enter a room code");
+            roomRef = db.ref(`rooms/${code}`);
+            roomId = code;
+            roomRef.once('value', (snap) => {
+                if (!snap.exists()) {
+                    alert("Room not found");
+                    roomRef = null; roomId = null;
+                } else {
+                    enterName();
+                }
+            });
+        });
+    }
+
+    function enterName() {
+        document.getElementById('setupArea').style.display = 'none';
+        document.getElementById('nameEntry').style.display = 'block';
+        document.getElementById('submitNameBtn').addEventListener('click', () => {
+            const name = document.getElementById('playerNameInput').value.trim() || 'Player';
+            joinRoom(name);
+        });
+    }
+
+    function joinRoom(name) {
+        roomRef.child('players').child(myUid).set({
+            name: name, score: 0, isAnswerer: false
+        }).then(() => {
+            roomRef.on('value', (snapshot) => {
+                currentState = snapshot.val();
+                if (!currentState) {
+                    container.innerHTML = "<p style='text-align:center;'>Room no longer exists.</p>";
+                    return;
+                }
+                // Normalize arrays from Firebase
+                currentState = normalizeArrays(currentState);
+                playerOrder = Object.keys(currentState.players || {});
+                myIndex = playerOrder.indexOf(myUid);
+                renderGame();
+            });
+            roomRef.child(`players/${myUid}`).onDisconnect().remove();
+        });
+    }
+
+    // ===== GAME RENDERING =====
+    function renderGame() {
+        if (!currentState) return;
+        const phase = currentState.phase;
+        const players = currentState.players || {};
+
+        let html = '';
+        html += '<div class="scoreboard">';
+        playerOrder.forEach(uid => {
+            const p = players[uid];
+            const active = (phase === 'answer' || phase === 'pick') && playerOrder[currentState.currentAnswererIndex] === uid;
+            html += `<div class="score-chip${active ? ' active' : ''}">${p.name}: ${p.score}</div>`;
+        });
+        html += '</div>';
+
+        if (phase === 'lobby') {
+            html += `<div class="spectrum-area" style="text-align:center;">
+                <p>Room code: <span class="room-code">${currentState.roomCode || roomId}</span></p>
+                <p>Waiting for players...</p>
+                <div class="lobby-player-list">
+                    ${playerOrder.map(uid => `<span>${players[uid].name}</span>`).join(' ')}
+                </div>
+                ${myUid === currentState.host ? `<button id="startGameBtn">Start Game (${playerOrder.length} players)</button>` : '<p>Waiting for host to start...</p>'}
+            </div>`;
+            container.innerHTML = html;
+            if (myUid === currentState.host) {
+                document.getElementById('startGameBtn').addEventListener('click', () => {
+                    if (playerOrder.length < 2) return alert("Need at least 2 players");
+                    startOnlineGame();
+                });
+            }
+            return;
+        }
+
+        // ---- PICK PHASE (no card required yet) ----
+        if (phase === 'pick') {
+            const answererUid = playerOrder[currentState.currentAnswererIndex];
+            if (!answererUid || !players[answererUid]) {
+                html += '<p class="message">Waiting for players...</p>';
+                container.innerHTML = html;
+                return;
+            }
+            if (answererUid === myUid) {
+                const deck = currentState.deck; // already normalized
+                if (!deck || !Array.isArray(deck) || deck.length < 2) {
+                    html += '<p>Loading questions...</p>';
+                    container.innerHTML = html;
+                    return;
+                }
+                const card1 = deck[0], card2 = deck[1];
+                html += `<div class="spectrum-area">
+                    <p class="prompt">${players[myUid].name}, pick your question:</p>
+                    <div class="pick-area">
+                        <div class="pick-card" id="pickCard1">${card1.prompt.replace('{player}', 'a friend')}</div>
+                        <div class="pick-card" id="pickCard2">${card2.prompt.replace('{player}', 'a friend')}</div>
+                    </div>
+                </div>`;
+                container.innerHTML = html;
+                document.getElementById('pickCard1').addEventListener('click', () => selectCardOnline(0));
+                document.getElementById('pickCard2').addEventListener('click', () => selectCardOnline(1));
+            } else {
+                html += `<p class="message">Waiting for ${players[answererUid].name} to pick a question...</p>`;
+                container.innerHTML = html;
+            }
+            return;
+        }
+
+        // All other phases need a currentCard
+        const card = currentState.currentCard;
+        if (!card) {
+            container.innerHTML = html + '<p>Loading...</p>';
+            return;
+        }
+
+        if (phase === 'answer') {
+            const answererUid = playerOrder[currentState.currentAnswererIndex];
+            if (answererUid === myUid) {
+                const halfWidthPercent = BAR_HALF.short * 22.5;
+                const secretLine = currentState.secretLine || 3.0;
+                const initialLeft = valueToPercent(secretLine) - halfWidthPercent;
+                html += `<div class="spectrum-area">
+                    <div class="prompt">📋 ${card.prompt}</div>
+                    <p style="text-align:center; margin:5px 0; font-size:0.9rem;"><strong>${players[myUid].name}, drag the box to set your spot.</strong></p>
+                `;
+                html += buildRulerHTML(`<div id="answerBar" class="answer-bar" style="left:${initialLeft}%; width:${halfWidthPercent * 2}%;"></div>`);
+                html += `<div style="text-align:center; margin-top:10px;"><button id="lockInBtn">🔒 Lock In</button></div></div>`;
+                container.innerHTML = html;
+
+                const barEl = document.getElementById('answerBar');
+                const minLeftPercent = 5 - halfWidthPercent, maxLeftPercent = 95 - halfWidthPercent;
+                let currentSecret = secretLine;
+                function updateSecretFromLeft(leftPercent) {
+                    const centerPercent = leftPercent + halfWidthPercent;
+                    let newVal = percentToValue(centerPercent);
+                    newVal = Math.min(MAX_VAL, Math.max(MIN_VAL, newVal));
+                    currentSecret = newVal;
+                }
+                makeDraggable(barEl, updateSecretFromLeft, minLeftPercent, maxLeftPercent);
+                document.getElementById('lockInBtn').addEventListener('click', () => {
+                    roomRef.update({
+                        secretLine: currentSecret,
+                        phase: 'guess',
+                        guessQueue: playerOrder.filter(uid => uid !== answererUid),
+                        currentGuesserStep: 0
+                    });
+                });
+            } else {
+                html += `<p class="message">Waiting for ${players[answererUid].name} to set the line...</p>`;
+                container.innerHTML = html;
+            }
+            return;
+        }
+
+        if (phase === 'guess') {
+            const guessQueue = currentState.guessQueue;
+            const step = currentState.currentGuesserStep;
+            if (step < guessQueue.length) {
+                const currentGuesserUid = guessQueue[step];
+                if (currentGuesserUid === myUid) {
+                    const totalGuessers = guessQueue.length;
+                    const laneIndex = step;
+                    html += `<div class="spectrum-area">
+                        <div class="prompt">🔍 ${card.prompt}</div>
+                        <p style="text-align:center; margin:5px 0; font-size:0.9rem;"><strong>${players[myUid].name}, choose bar and drag.</strong></p>
+                        <div class="bar-type-selector">
+                            <button class="bar-type-btn" data-type="long">Long (1pt)</button>
+                            <button class="bar-type-btn selected" data-type="medium">Medium (2pt)</button>
+                            <button class="bar-type-btn" data-type="short">Short (3pt)</button>
+                        </div>`;
+
+                    let selectedType = 'medium', guessCenter = 3.0;
+                    function barWidthPercent(type) { return BAR_HALF[type] * 22.5 * 2; }
+                    function barLeftPercent(center, type) { return valueToPercent(center) - BAR_HALF[type] * 22.5; }
+
+                    let guessLanesHTML = '', rulerHeight = 70, laneHeight = 0, lanePadding = 0;
+                    if (currentState.showAllGuesses) {
+                        const layout = getLaneLayout(totalGuessers);
+                        rulerHeight = layout.rulerHeight; laneHeight = layout.laneHeight; lanePadding = layout.lanePadding;
+                        const guesses = currentState.guesses || {};
+                        for (let i = 0; i < step; i++) {
+                            const uid = guessQueue[i];
+                            const g = guesses[uid];
+                            if (!g) continue;
+                            const left = valueToPercent(g.rangeStart), width = (g.rangeEnd - g.rangeStart) * 22.5;
+                            const top = rulerHeight - lanePadding - (i + 1) * laneHeight + 4;
+                            guessLanesHTML += `<div class="guess-bar" style="left:${left}%; width:${width}%; top:${top}px; height:${laneHeight - 4}px; background:#aaa; pointer-events:none;">${players[uid].name}</div>`;
+                        }
+                    }
+
+                    const initialWidth = barWidthPercent(selectedType);
+                    const initialLeft = barLeftPercent(guessCenter, selectedType);
+                    let currentBarStyle = '';
+                    if (currentState.showAllGuesses) {
+                        const top = rulerHeight - lanePadding - (laneIndex + 1) * laneHeight + 4;
+                        currentBarStyle = `top:${top}px; height:${laneHeight - 4}px;`;
+                    } else {
+                        currentBarStyle = `top:8px; bottom:8px;`;
+                    }
+
+                    html += buildRulerHTML(
+                        `<div id="guessBar" class="guess-bar" style="left:${initialLeft}%; width:${initialWidth}%; ${currentBarStyle}">${players[myUid].name}</div>`,
+                        guessLanesHTML, rulerHeight
+                    );
+                    html += `<div style="text-align:center; margin-top:10px;"><button id="placeBarBtn">✅ Place Bar</button></div></div>`;
+                    container.innerHTML = html;
+
+                    const barEl = document.getElementById('guessBar');
+                    const typeBtns = document.querySelectorAll('.bar-type-btn');
+
+                    function updateBarDisplay() {
+                        const width = barWidthPercent(selectedType);
+                        let left = barLeftPercent(guessCenter, selectedType);
+                        left = Math.max(0, Math.min(100 - width, left));
+                        barEl.style.width = width + '%'; barEl.style.left = left + '%';
+                        barEl.textContent = players[myUid].name;
+                    }
+
+                    function onBarDrag(leftPercent) {
+                        const widthPercent = parseFloat(barEl.style.width);
+                        const centerPercent = leftPercent + widthPercent / 2;
+                        let newCenter = percentToValue(centerPercent);
+                        newCenter = Math.min(MAX_VAL, Math.max(MIN_VAL, newCenter));
+                        guessCenter = newCenter;
+                        updateBarDisplay();
+                    }
+
+                    makeDraggable(barEl, onBarDrag);
+
+                    typeBtns.forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            typeBtns.forEach(b => b.classList.remove('selected'));
+                            btn.classList.add('selected');
+                            selectedType = btn.dataset.type;
+                            updateBarDisplay();
+                        });
+                    });
+
+                    document.getElementById('placeBarBtn').addEventListener('click', () => {
+                        const range = computeBarRange(guessCenter, selectedType);
+                        roomRef.child('guesses').child(myUid).set({
+                            playerIndex: myIndex, barType: selectedType, center: guessCenter,
+                            rangeStart: range.start, rangeEnd: range.end
+                        });
+                        roomRef.child('currentGuesserStep').set(step + 1);
+                        if (step + 1 >= guessQueue.length) roomRef.child('phase').set('reveal');
+                    });
+                } else {
+                    html += `<p class="message">Waiting for ${players[currentGuesserUid].name} to place their guess...</p>`;
+                    container.innerHTML = html;
+                }
+            } else {
+                roomRef.child('phase').set('reveal');
+            }
+            return;
+        }
+
+        if (phase === 'reveal') {
+            const guessQueue = currentState.guessQueue;
+            const guesses = currentState.guesses || {};
+            const answererUid = playerOrder[currentState.currentAnswererIndex];
+            const totalGuessers = guessQueue.length;
+            const colors = ['#fc8181','#68d391','#63b3ed','#f6ad55','#b794f4','#fbb6ce','#4fd1c5','#f6e05e'];
+
+            let barsHTML = '', rulerHeight = 70;
+            if (currentState.showAllGuesses) {
+                const layout = getLaneLayout(totalGuessers);
+                rulerHeight = layout.rulerHeight;
+                const laneHeight = layout.laneHeight, lanePadding = layout.lanePadding;
+                guessQueue.forEach((uid, i) => {
+                    const g = guesses[uid];
+                    if (!g) return;
+                    const left = valueToPercent(g.rangeStart), width = (g.rangeEnd - g.rangeStart) * 22.5;
+                    const color = colors[playerOrder.indexOf(uid) % colors.length];
+                    const top = rulerHeight - lanePadding - (i + 1) * laneHeight + 4;
+                    barsHTML += `<div class="guess-bar" style="left:${left}%; width:${width}%; top:${top}px; height:${laneHeight - 4}px; background:${color}; pointer-events:none;">${players[uid].name}</div>`;
+                });
+            } else {
+                guessQueue.forEach(uid => {
+                    const g = guesses[uid];
+                    if (!g) return;
+                    const left = valueToPercent(g.rangeStart), width = (g.rangeEnd - g.rangeStart) * 22.5;
+                    const color = colors[playerOrder.indexOf(uid) % colors.length];
+                    barsHTML += `<div class="guess-bar" style="left:${left}%; width:${width}%; background:${color}; pointer-events:none;">${players[uid].name}</div>`;
+                });
+            }
+
+            const halfWidthPercent = BAR_HALF.short * 22.5;
+            const answerLeft = valueToPercent(currentState.secretLine || 3) - halfWidthPercent;
+            const answerBarHTML = `<div class="answer-bar" style="left:${answerLeft}%; width:${halfWidthPercent * 2}%; pointer-events:none;"></div>`;
+
+            html += `<div class="spectrum-area">
+                <div class="prompt">📋 ${card.prompt}</div>
+                <p style="text-align:center; margin:5px 0;"><strong>Reveal! ${players[answererUid].name}'s line is the red mark.</strong></p>
+                ${buildRulerHTML(answerBarHTML + barsHTML, null, rulerHeight)}
+                <div style="margin-top:15px;">
+            `;
+            let roundResults = '';
+            guessQueue.forEach(uid => {
+                const g = guesses[uid];
+                if (!g) return;
+                const hit = isHit(currentState.secretLine, g.rangeStart, g.rangeEnd);
+                const pts = hit ? BAR_POINTS[g.barType] : 0;
+                roundResults += `<div class="result-line"><strong>${players[uid].name}</strong> (${g.barType}): ${hit ? `✅ Hit! +${pts} pt` : '❌ Missed'}</div>`;
+            });
+            html += roundResults + `</div></div>`;
+
+            const winners = playerOrder.filter(uid => (players[uid].score || 0) >= 12);
+            if (winners.length > 0) {
+                html += `<div class="winner-banner">🏆 Winner(s): ${winners.map(uid => players[uid].name).join(', ')} reached 12 points! 🏆</div>`;
+                if (myUid === currentState.host) html += `<button id="newGameBtn">Play Again</button>`;
+            } else {
+                if (myUid === currentState.host) html += `<button id="nextRoundBtn">Next Round ▶</button>`;
+                else html += `<p>Waiting for host to start next round...</p>`;
+            }
+            container.innerHTML = html;
+            if (myUid === currentState.host) {
+                document.getElementById('nextRoundBtn')?.addEventListener('click', nextRound);
+                document.getElementById('newGameBtn')?.addEventListener('click', resetGame);
+            }
+        }
+    }
+
+    // ===== ONLINE ACTIONS =====
+    function startOnlineGame() {
+        let deck = currentState.deck || [];
+        if (!Array.isArray(deck) || deck.length < 2) {
+            deck = [...CARDS].sort(() => Math.random() - 0.5);
+        }
+        const randomIndex = Math.floor(Math.random() * playerOrder.length);
+        roomRef.update({
+            phase: 'pick',
+            currentAnswererIndex: randomIndex,
+            secretLine: 3.0,
+            guesses: {},
+            guessQueue: [],
+            currentGuesserStep: 0,
+            currentCard: null,
+            deck: deck
+        });
+    }
+
+    function selectCardOnline(cardIndex) {
+        let deck = currentState.deck;
+        if (!Array.isArray(deck) || deck.length < 2) {
+            deck = [...CARDS].sort(() => Math.random() - 0.5);
+        }
+        const chosen = deck.splice(cardIndex, 1)[0];
+        const other = deck.shift();
+        let newDeck = [...deck, other].filter(Boolean);
+        if (newDeck.length < 2) {
+            const fresh = [...CARDS].sort(() => Math.random() - 0.5);
+            newDeck = newDeck.concat(fresh);
+        }
+        if (chosen && chosen.prompt.includes('{player}')) {
+            const otherPlayers = playerOrder.filter(uid => uid !== myUid);
+            const target = otherPlayers[Math.floor(Math.random() * otherPlayers.length)];
+            chosen.prompt = chosen.prompt.replace('{player}', currentState.players[target].name);
+        }
+        roomRef.update({
+            currentCard: chosen,
+            deck: newDeck,
+            phase: 'answer'
+        });
+    }
+
+    function nextRound() {
+        let deck = currentState.deck || [];
+        if (!Array.isArray(deck) || deck.length < 2) {
+            deck = [...CARDS].sort(() => Math.random() - 0.5);
+        }
+        const nextIndex = (currentState.currentAnswererIndex + 1) % playerOrder.length;
+        roomRef.update({
+            phase: 'pick',
+            currentAnswererIndex: nextIndex,
+            secretLine: 3.0,
+            guesses: {},
+            guessQueue: [],
+            currentGuesserStep: 0,
+            currentCard: null,
+            deck: deck
+        });
+    }
+
+    function resetGame() {
+        playerOrder.forEach(uid => {
+            roomRef.child(`players/${uid}/score`).set(0);
+        });
+        startOnlineGame();
+    }
+</script>
+</body>
+</html>
