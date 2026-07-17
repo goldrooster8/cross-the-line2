@@ -481,7 +481,6 @@
             return;
         }
 
-        // ---- PICK PHASE ----
         if (phase === 'pick') {
             const answererUid = playerOrder[currentState.currentAnswererIndex];
             if (!answererUid || !players[answererUid]) {
@@ -650,40 +649,35 @@
 
                     document.getElementById('placeBarBtn').addEventListener('click', () => {
                         const range = computeBarRange(guessCenter, selectedType);
-                        roomRef.child('guesses').child(myUid).set({
+                        const updates = {};
+                        updates[`guesses/${myUid}`] = {
                             playerIndex: myIndex, barType: selectedType, center: guessCenter,
                             rangeStart: range.start, rangeEnd: range.end
-                        });
-                        roomRef.child('currentGuesserStep').set(step + 1);
+                        };
+                        updates['currentGuesserStep'] = step + 1;
+
                         if (step + 1 >= guessQueue.length) {
-                            // All guesses placed: calculate scores, update them, and move to reveal
+                            // All guesses placed – calculate scores and finalise round
                             const allGuesses = currentState.guesses || {};
+                            // Include the current guess that hasn't been written yet
+                            allGuesses[myUid] = updates[`guesses/${myUid}`];
                             const secret = currentState.secretLine || 3.0;
-                            const scoreUpdates = {};
                             guessQueue.forEach(uid => {
                                 const g = allGuesses[uid];
                                 if (!g) return;
                                 const hit = isHit(secret, g.rangeStart, g.rangeEnd);
                                 const pts = hit ? BAR_POINTS[g.barType] : 0;
-                                const oldScore = players[uid] ? players[uid].score : 0;
-                                scoreUpdates[`players/${uid}/score`] = oldScore + pts;
+                                const oldScore = (players[uid] ? players[uid].score : 0) || 0;
+                                updates[`players/${uid}/score`] = oldScore + pts;
                             });
-                            const newRound = (currentState.roundCount || 0) + 1;
-                            scoreUpdates['roundCount'] = newRound;
-                            scoreUpdates['phase'] = 'reveal';
-                            roomRef.update(scoreUpdates);
+                            updates['roundCount'] = (currentState.roundCount || 0) + 1;
+                            updates['phase'] = 'reveal';
                         }
+                        roomRef.update(updates);
                     });
                 } else {
                     html += `<p class="message">Waiting for ${players[currentGuesserUid].name} to place their guess...</p>`;
                     container.innerHTML = html;
-                }
-            } else {
-                // This case shouldn't happen anymore because we move to reveal via score update,
-                // but keep as fallback
-                if (currentState.guessQueue && currentState.guessQueue.length > 0) {
-                    // All guesses already placed, just set phase to reveal (scores were already updated)
-                    roomRef.child('phase').set('reveal');
                 }
             }
             return;
