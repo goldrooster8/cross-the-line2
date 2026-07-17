@@ -42,12 +42,11 @@
         .tick-minor { height: 10px; background: #cbd5e0; width: 2px; }
         .phrase-panel {
             display: flex; background: #fff; border-radius: 0 0 8px 8px; margin-top: 2px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 70px; overflow: hidden;  /* taller */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 70px; overflow: hidden;
         }
         .phrase-column {
             flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
-            font-size: 0.85rem;  /* bigger text */
-            font-weight: 700; color: #1a1e2b; line-height: 1.2; padding: 2px;
+            font-size: 0.85rem; font-weight: 700; color: #1a1e2b; line-height: 1.2; padding: 2px;
             word-break: break-word; overflow-wrap: break-word; hyphens: auto;
         }
         .answer-bar {
@@ -83,7 +82,6 @@
         .room-code {
             font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; background: #f7d44a; color: #1a1e2b; padding: 2px 8px; border-radius: 8px;
         }
-        /* Permanent rules footer */
         .rules-footer {
             background: #1e2230; border-radius: 12px; margin-top: 8px; padding: 8px; font-size: 0.7rem;
             color: #cbd5e0; max-height: 80px; overflow-y: auto; transition: max-height 0.3s ease;
@@ -100,7 +98,6 @@
 <body>
 <div class="game-container" id="gameContainer">
     <div id="dynamicContent"></div>
-    <!-- Permanent rules footer -->
     <div class="rules-footer" id="rulesFooter">
         <button class="rules-footer-btn" onclick="toggleRules()">📜 Rules</button>
         <div id="rulesText">
@@ -120,7 +117,6 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
 
 <script>
-    // Toggle rules expansion
     window.toggleRules = function() {
         const footer = document.getElementById('rulesFooter');
         footer.classList.toggle('expanded');
@@ -659,14 +655,36 @@
                             rangeStart: range.start, rangeEnd: range.end
                         });
                         roomRef.child('currentGuesserStep').set(step + 1);
-                        if (step + 1 >= guessQueue.length) roomRef.child('phase').set('reveal');
+                        if (step + 1 >= guessQueue.length) {
+                            // All guesses placed: calculate scores, update them, and move to reveal
+                            const allGuesses = currentState.guesses || {};
+                            const secret = currentState.secretLine || 3.0;
+                            const scoreUpdates = {};
+                            guessQueue.forEach(uid => {
+                                const g = allGuesses[uid];
+                                if (!g) return;
+                                const hit = isHit(secret, g.rangeStart, g.rangeEnd);
+                                const pts = hit ? BAR_POINTS[g.barType] : 0;
+                                const oldScore = players[uid] ? players[uid].score : 0;
+                                scoreUpdates[`players/${uid}/score`] = oldScore + pts;
+                            });
+                            const newRound = (currentState.roundCount || 0) + 1;
+                            scoreUpdates['roundCount'] = newRound;
+                            scoreUpdates['phase'] = 'reveal';
+                            roomRef.update(scoreUpdates);
+                        }
                     });
                 } else {
                     html += `<p class="message">Waiting for ${players[currentGuesserUid].name} to place their guess...</p>`;
                     container.innerHTML = html;
                 }
             } else {
-                roomRef.child('phase').set('reveal');
+                // This case shouldn't happen anymore because we move to reveal via score update,
+                // but keep as fallback
+                if (currentState.guessQueue && currentState.guessQueue.length > 0) {
+                    // All guesses already placed, just set phase to reveal (scores were already updated)
+                    roomRef.child('phase').set('reveal');
+                }
             }
             return;
         }
@@ -711,31 +729,22 @@
                 <div style="margin-top:15px;">
             `;
             let roundResults = '';
-            const scoreUpdates = {};
             guessQueue.forEach(uid => {
                 const g = guesses[uid];
                 if (!g) return;
                 const hit = isHit(currentState.secretLine, g.rangeStart, g.rangeEnd);
                 const pts = hit ? BAR_POINTS[g.barType] : 0;
-                const oldScore = players[uid] ? players[uid].score : 0;
-                const newScore = oldScore + pts;
-                scoreUpdates[`players/${uid}/score`] = newScore;
-                roundResults += `<div class="result-line"><strong>${players[uid].name}</strong> (${g.barType}): ${hit ? `✅ Hit! +${pts} pt` : '❌ Missed'} (Total: ${newScore})</div>`;
+                roundResults += `<div class="result-line"><strong>${players[uid].name}</strong> (${g.barType}): ${hit ? `✅ Hit! +${pts} pt` : '❌ Missed'} (Total: ${players[uid].score})</div>`;
             });
-            // Update all scores and increment round
-            const newRound = (currentState.roundCount || 0) + 1;
-            scoreUpdates['roundCount'] = newRound;
-            roomRef.update(scoreUpdates);
             html += roundResults + `</div></div>`;
 
-            // Check for game end
+            const newRound = currentState.roundCount || 0;
             if (newRound >= 10) {
-                // Game over – determine winner
                 let maxScore = -1, winnerUids = [];
                 playerOrder.forEach(uid => {
-                    const s = scoreUpdates[`players/${uid}/score`] || players[uid].score;
+                    const s = players[uid] ? players[uid].score : 0;
                     if (s > maxScore) { maxScore = s; winnerUids = [uid]; }
-                    else if (s === maxScore) { winnerUids.push(uid); }
+                    else if (s === maxScore) winnerUids.push(uid);
                 });
                 html += `<div class="winner-banner">
                     🏆 Game over after 10 rounds!<br>
