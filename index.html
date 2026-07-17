@@ -16,8 +16,8 @@
         }
         @media (orientation: landscape) {
             .game-container { max-width: 95%; padding: 12px 20px; }
-            .phrase-panel { height: 52px; }
-            .phrase-column { font-size: 0.55rem; }
+            .phrase-panel { height: 62px; }
+            .phrase-column { font-size: 0.75rem; }
             .ruler-container { max-height: 300px; }
         }
         .scoreboard { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 0 0 8px; background: #1e2230; padding: 6px; border-radius: 16px; }
@@ -40,10 +40,14 @@
         .tick-mark { position: absolute; bottom: 0; transform: translateX(-50%); }
         .tick-major { height: 22px; background: #f7d44a; width: 3px; }
         .tick-minor { height: 10px; background: #cbd5e0; width: 2px; }
-        .phrase-panel { display: flex; background: #fff; border-radius: 0 0 8px 8px; margin-top: 2px; box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 46px; overflow: hidden; }
+        .phrase-panel {
+            display: flex; background: #fff; border-radius: 0 0 8px 8px; margin-top: 2px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3); height: 56px; overflow: hidden;  /* increased height */
+        }
         .phrase-column {
             flex: 1; display: flex; align-items: center; justify-content: center; text-align: center;
-            font-size: 0.5rem; font-weight: 700; color: #1a1e2b; line-height: 1.15; padding: 2px;
+            font-size: 0.7rem;  /* bigger text – almost 1.5× previous */
+            font-weight: 700; color: #1a1e2b; line-height: 1.2; padding: 2px;
             word-break: break-word; overflow-wrap: break-word; hyphens: auto;
         }
         .answer-bar {
@@ -79,11 +83,41 @@
         .room-code {
             font-size: 1.2rem; font-weight: bold; letter-spacing: 2px; background: #f7d44a; color: #1a1e2b; padding: 2px 8px; border-radius: 8px;
         }
+        .rules-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 100; justify-content: center; align-items: center;
+        }
+        .rules-content {
+            background: #252a3a; border-radius: 16px; padding: 20px; max-width: 500px; width: 90%;
+            color: #f0e6d2; max-height: 80vh; overflow-y: auto;
+        }
+        .rules-content h3 { color: #f7d44a; }
+        .rules-content p, .rules-content li { font-size: 0.9rem; line-height: 1.4; margin: 4px 0; }
+        .close-btn {
+            display: block; margin: 10px auto 0; background: #f7d44a; color: #1a1e2b; border: none;
+            padding: 8px 20px; border-radius: 20px; cursor: pointer; font-weight: bold;
+        }
     </style>
 </head>
 <body>
 <div class="game-container" id="gameContainer">
     <div id="dynamicContent"></div>
+</div>
+
+<!-- Rules Modal -->
+<div id="rulesModal" class="rules-modal">
+    <div class="rules-content">
+        <h3>📜 How to Play Cross the Line</h3>
+        <p><strong>Objective:</strong> Score the most points by guessing the secret position chosen by the current answerer.</p>
+        <ul>
+            <li>One player is the <strong>answerer</strong> each round. They secretly choose a spot on the ruler (1–5) that represents their answer to the prompt.</li>
+            <li>All other players then <strong>guess</strong> where that spot is by placing a bar (short, medium, or long) on the ruler. Shorter bars give more points but are harder to hit.</li>
+            <li>After everyone has guessed, the true answer line is revealed. If the answer line lies <strong>inside</strong> your bar, you win the points for that bar type (1pt for long, 2pt for medium, 3pt for short).</li>
+            <li>First player to reach 12 points wins!</li>
+        </ul>
+        <p><strong>How to join:</strong> One person creates a room and shares the 5‑letter code. Others enter the code and a name to join. The host starts the game.</p>
+        <button class="close-btn" onclick="document.getElementById('rulesModal').style.display='none'">Got it!</button>
+    </div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
@@ -342,6 +376,7 @@
                     <input type="text" id="playerNameInput" placeholder="Your name" maxlength="12" style="padding:5px; font-size:1rem;">
                     <button id="submitNameBtn">Join</button>
                 </div>
+                <button id="howToPlayBtn" style="margin-top:15px; background:transparent; border:1px solid #f7d44a; color:#f7d44a;">How to Play</button>
             </div>
         `;
 
@@ -381,6 +416,10 @@
                 }
             });
         });
+
+        document.getElementById('howToPlayBtn').addEventListener('click', () => {
+            document.getElementById('rulesModal').style.display = 'flex';
+        });
     }
 
     function enterName() {
@@ -402,7 +441,6 @@
                     container.innerHTML = "<p style='text-align:center;'>Room no longer exists.</p>";
                     return;
                 }
-                // Normalize arrays from Firebase
                 currentState = normalizeArrays(currentState);
                 playerOrder = Object.keys(currentState.players || {});
                 myIndex = playerOrder.indexOf(myUid);
@@ -446,7 +484,7 @@
             return;
         }
 
-        // ---- PICK PHASE (no card required yet) ----
+        // ---- PICK PHASE (no card required) ----
         if (phase === 'pick') {
             const answererUid = playerOrder[currentState.currentAnswererIndex];
             if (!answererUid || !players[answererUid]) {
@@ -455,7 +493,7 @@
                 return;
             }
             if (answererUid === myUid) {
-                const deck = currentState.deck; // already normalized
+                const deck = currentState.deck;
                 if (!deck || !Array.isArray(deck) || deck.length < 2) {
                     html += '<p>Loading questions...</p>';
                     container.innerHTML = html;
@@ -479,15 +517,17 @@
             return;
         }
 
-        // All other phases need a currentCard
         const card = currentState.currentCard;
         if (!card) {
             container.innerHTML = html + '<p>Loading...</p>';
             return;
         }
 
+        // ---- Show who the answerer is before guessing ----
+        const answererUid = playerOrder[currentState.currentAnswererIndex];
+        const answererName = players[answererUid] ? players[answererUid].name : 'Unknown';
+
         if (phase === 'answer') {
-            const answererUid = playerOrder[currentState.currentAnswererIndex];
             if (answererUid === myUid) {
                 const halfWidthPercent = BAR_HALF.short * 22.5;
                 const secretLine = currentState.secretLine || 3.0;
@@ -519,13 +559,15 @@
                     });
                 });
             } else {
-                html += `<p class="message">Waiting for ${players[answererUid].name} to set the line...</p>`;
+                html += `<p class="message">Waiting for ${answererName} to set the line...</p>`;
                 container.innerHTML = html;
             }
             return;
         }
 
         if (phase === 'guess') {
+            html += `<p style="text-align:center; font-size:0.9rem; color:#f7d44a;">Answerer: ${answererName}</p>`;
+
             const guessQueue = currentState.guessQueue;
             const step = currentState.currentGuesserStep;
             if (step < guessQueue.length) {
@@ -631,7 +673,6 @@
         if (phase === 'reveal') {
             const guessQueue = currentState.guessQueue;
             const guesses = currentState.guesses || {};
-            const answererUid = playerOrder[currentState.currentAnswererIndex];
             const totalGuessers = guessQueue.length;
             const colors = ['#fc8181','#68d391','#63b3ed','#f6ad55','#b794f4','#fbb6ce','#4fd1c5','#f6e05e'];
 
@@ -664,7 +705,7 @@
 
             html += `<div class="spectrum-area">
                 <div class="prompt">📋 ${card.prompt}</div>
-                <p style="text-align:center; margin:5px 0;"><strong>Reveal! ${players[answererUid].name}'s line is the red mark.</strong></p>
+                <p style="text-align:center; margin:5px 0;"><strong>Reveal! ${answererName}'s line is the red mark.</strong></p>
                 ${buildRulerHTML(answerBarHTML + barsHTML, null, rulerHeight)}
                 <div style="margin-top:15px;">
             `;
