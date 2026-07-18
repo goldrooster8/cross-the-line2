@@ -136,9 +136,9 @@
     const auth = firebase.auth();
     const db = firebase.database();
 
-    // ===== COMPLETE CARD DECK =====
+    // ===== EXPANDED CARD DECK (128 cards total) =====
     const CARDS = [
-        // LIGHT (49)
+        // LIGHT (49 original)
         { prompt: "How long is your daily screen time?", answers: ["Barely check my phone", "Under two hours total", "Around four to five hours", "Seven plus hours daily", "Phone glued to hand"] },
         { prompt: "How often do you post photos?", answers: ["Ghost account, no posts", "Once a year maybe", "Monthly photo dump only", "Weekly stories and reels", "Influencer everything documented"] },
         { prompt: "How do you handle group chats?", answers: ["Reply three weeks later", "Only thumbs-up emojis", "Chat when I have time", "Spam memes when quiet", "I run the entire chat"] },
@@ -188,7 +188,7 @@
         { prompt: "What’s your walking speed?", answers: ["Slow meandering, look at leaves", "Relaxed pace with friends", "Standard commuter moving purpose", "Power walking weaving people", "Running everywhere like escaping"] },
         { prompt: "How fit are you for running?", answers: ["Out of breath on stairs", "Can handle light jog", "Average, cross-country okay", "Athletic, train regularly", "Half-marathon for fun"] },
         { prompt: "How much sunscreen do you use?", answers: ["Never, accept the sunburn", "Tiny bit if reminded", "Quick spray on arms and legs", "Full factor fifty reapplied", "Zinc, hat, long sleeves, fear sun"] },
-        // PERSONAL (21)
+        // PERSONAL (21 original)
         { prompt: "How often do you feel left out?", answers: ["Never, always included", "Rarely, only occasionally", "Sometimes, depends on group", "Often, I notice it", "Always feel left out"] },
         { prompt: "How much do you compare yourself to others?", answers: ["Never compare myself", "Rarely, happy with me", "Sometimes it creeps in", "Often, it bothers me", "Constantly comparing, it hurts"] },
         { prompt: "How quickly do you trust new people?", answers: ["Trust instantly, open book", "Trust after a few talks", "Take months to trust", "Very guarded, rare trust", "Never fully trust anyone"] },
@@ -210,7 +210,7 @@
         { prompt: "How much do you trust people with secrets?", answers: ["Trust easily, open", "Trust close friends only", "Trust after a long time", "Very rarely trust anyone", "I never share secrets"] },
         { prompt: "How do you feel when a friend cancels plans?", answers: ["Totally fine, more me-time", "A bit disappointed but okay", "Feel sad, wonder why", "Take it personally, hurt", "Furious, they don't care"] },
         { prompt: "How often do you feel like you don't fit in?", answers: ["Never, always belong", "Rarely, mostly comfortable", "Sometimes in new groups", "Often feel like outsider", "Always feel I don't fit"] },
-        // INTERPERSONAL (8)
+        // INTERPERSONAL (8 original)
         { prompt: "How similar is your music taste to {player}?", answers: ["Totally different", "A few overlaps", "Half the same", "Mostly the same", "Exactly identical"] },
         { prompt: "How often do you and {player} laugh at the same things?", answers: ["Never", "Rarely", "Sometimes", "Often", "Always"] },
         { prompt: "How well do you understand {player}'s sense of humor?", answers: ["Not at all", "A little", "Moderately", "Pretty well", "Completely"] },
@@ -218,9 +218,52 @@
         { prompt: "How similar are your study habits to {player}?", answers: ["Opposite", "A bit different", "About the same", "Very similar", "Identical"] },
         { prompt: "How often do you and {player} agree on what to eat?", answers: ["Never", "Rarely", "Sometimes", "Often", "Always"] },
         { prompt: "How comfortable are you being yourself around {player}?", answers: ["Not at all", "A little", "Moderately", "Mostly", "Completely"] },
-        { prompt: "How similar is your energy level to {player}?", answers: ["Opposite", "A bit different", "About the same", "Very similar", "Identical"] }
+        { prompt: "How similar is your energy level to {player}?", answers: ["Opposite", "A bit different", "About the same", "Very similar", "Identical"] },
+        // ---- 50 NEW QUESTIONS (mixed casual, personal, collab) ----
+        // Casual / light
+        { prompt: "How much do you enjoy rollercoasters?", answers: ["Terrified, never ride", "Only small ones", "Fine with most", "Love big thrills", "Adrenaline junkie"] },
+        { prompt: "How often do you use social media in class?", answers: ["Never, I pay attention", "Quick glance once", "A few times per lesson", "Every few minutes", "Scrolling all period"] },
+        { prompt: "How do you react to a surprise test?", answers: ["Calm, I'm always ready", "Slightly annoyed", "Cram last 5 minutes", "Panic internally", "Full meltdown"] },
+        { prompt: "What’s your opinion on pineapple on pizza?", answers: ["Absolutely not", "I’d rather not", "Indifferent", "It’s okay sometimes", "Love it, fight me"] },
+        { prompt: "How early do you arrive to class?", answers: ["10+ minutes early", "5 minutes early", "Right on time", "1-2 minutes late", "Chronically 10+ mins late"] },
+        { prompt: "How much water do you drink daily?", answers: ["Almost none", "A glass or two", "Maybe a bottle", "2-3 bottles", "Gallons, I'm a fish"] },
+        { prompt: "How do you feel about public speaking?", answers: ["Absolutely terrified", "Very nervous", "A bit anxious", "Manageable", "Totally comfortable"] },
+        { prompt: "How often do you check your phone during a movie?", answers: ["Never, I'm focused", "Maybe once", "A few times", "Every 10 minutes", "Constantly, I'm bored"] },
+        { prompt: "How do you handle a power outage?", answers: ["Total panic", "Freak out initially", "Light candles, wait", "Make it a fun campout", "I have backup generators"] },
+        { prompt: "How much do you like karaoke?", answers: ["Would rather die", "Only if forced", "Will watch others", "Sing a couple songs", "Main character energy"] },
+        { prompt: "How often do you use emojis?", answers: ["Never, I'm a professional", "Rarely, only 🙂", "A few per message", "Most messages have one", "Every sentence 😂🔥💯"] },
+        { prompt: "How messy is your desk/workspace?", answers: ["Spotless", "A few items out", "Cluttered but functional", "Can't see the surface", "Archaeological dig site"] },
+        { prompt: "How do you handle spicy food challenges?", answers: ["Refuse immediately", "Try a tiny bite", "Finish the challenge", "Love the pain", "Seek out the hottest"] },
+        { prompt: "How often do you hit the snooze button?", answers: ["Never, I get up instantly", "Once or twice a week", "Most days", "Multiple times daily", "I have 20 alarms set"] },
+        // Personal / deeper
+        { prompt: "How much do you trust your gut feeling?", answers: ["Always second-guess", "Rarely trust it", "Sometimes listen", "Mostly trust it", "My gut is never wrong"] },
+        { prompt: "How often do you worry about the future?", answers: ["Never, I live in the moment", "Occasionally", "A few times a week", "Daily", "Constantly anxious about it"] },
+        { prompt: "How comfortable are you saying no?", answers: ["Impossible for me", "Very hard", "Situational", "Mostly fine", "Easy, I set boundaries"] },
+        { prompt: "How often do you feel grateful?", answers: ["Rarely think about it", "Only on special days", "Sometimes", "Often", "Every single day"] },
+        { prompt: "How easily do you cry during movies?", answers: ["Never, stone cold", "Only at the saddest scenes", "A tear or two", "Cry fairly often", "I'm a sobbing mess"] },
+        { prompt: "How much do you enjoy your own company?", answers: ["I hate being alone", "I can manage short periods", "I'm okay with it", "I quite enjoy it", "I thrive alone"] },
+        { prompt: "How often do you doubt your decisions?", answers: ["Never, I'm decisive", "Rarely", "Sometimes", "Often", "I second-guess everything"] },
+        { prompt: "How comfortable are you with silence?", answers: ["I need constant noise", "Uncomfortable quickly", "Neutral", "Mostly fine", "I love silence"] },
+        { prompt: "How often do you take risks?", answers: ["Never, play it safe", "Very rarely", "Occasionally", "Pretty often", "Thrill-seeker, all the time"] },
+        { prompt: "How much do you enjoy deep conversations?", answers: ["Hate them, keep it light", "Only with close friends", "Sometimes", "I like them a lot", "I live for deep talks"] },
+        { prompt: "How often do you feel like you're falling behind?", answers: ["Never, I'm on top", "Rarely", "Monthly", "Weekly", "Every single day"] },
+        { prompt: "How do you handle unexpected change?", answers: ["Freak out completely", "Get stressed", "Take time to adjust", "Go with the flow", "Thrive on it"] },
+        // Collab / interpersonal
+        { prompt: "How similar are your weekend habits to {player}?", answers: ["Completely different", "A little similar", "Half the same", "Mostly the same", "Identical twins"] },
+        { prompt: "How likely are you to message {player} first?", answers: ["Never, I wait", "Rarely", "Sometimes", "Often", "Always, I'm the initiator"] },
+        { prompt: "How similar is your taste in memes to {player}?", answers: ["We send totally different memes", "Only a few overlap", "Half of our memes match", "We share most memes", "Same brain cell"] },
+        { prompt: "How often do you and {player} have inside jokes?", answers: ["None at all", "Maybe one or two", "A handful", "A lot", "We speak in inside jokes"] },
+        { prompt: "How well can you predict {player}'s reactions?", answers: ["Completely clueless", "Sometimes guess", "About half the time", "Mostly correct", "I always know"] },
+        { prompt: "How similar are your fashion styles to {player}?", answers: ["Polar opposites", "A little overlap", "Some similarity", "Very similar", "We share a wardrobe"] },
+        { prompt: "How often do you and {player} argue?", answers: ["Never", "Rarely", "Sometimes", "Often", "Constantly"] },
+        { prompt: "How similar is your definition of fun to {player}?", answers: ["Totally different", "A bit different", "About the same", "Very similar", "Identical"] },
+        { prompt: "How well can {player} read your emotions?", answers: ["Not at all", "A little", "Moderately", "Pretty well", "Completely"] },
+        { prompt: "How often do you and {player} finish each other's sentences?", answers: ["Never", "Once or twice", "Occasionally", "Often", "All the time"] },
+        { prompt: "How similar are your life goals to {player}?", answers: ["Totally different", "A little overlap", "Some shared", "Mostly shared", "Exactly the same"] },
+        { prompt: "How comfortable are you borrowing clothes from {player}?", answers: ["Never, that's weird", "Only if desperate", "Occasionally", "Pretty comfortable", "We share everything"] }
     ];
 
+    // ===== CONSTANTS & HELPERS =====
     const MIN_VAL = 1.0, MAX_VAL = 5.0;
     const BAR_HALF = { long: 0.75, medium: 0.35, short: 0.2 };
     const BAR_POINTS = { long: 1, medium: 2, short: 3 };
@@ -657,9 +700,7 @@
                         updates['currentGuesserStep'] = step + 1;
 
                         if (step + 1 >= guessQueue.length) {
-                            // All guesses placed – calculate scores and finalise round
                             const allGuesses = currentState.guesses || {};
-                            // Include the current guess that hasn't been written yet
                             allGuesses[myUid] = updates[`guesses/${myUid}`];
                             const secret = currentState.secretLine || 3.0;
                             guessQueue.forEach(uid => {
